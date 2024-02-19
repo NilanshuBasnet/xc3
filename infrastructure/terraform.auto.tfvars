@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-namespace      = "xc3team12pd"
+namespace      = "xc3team12pradhumna"
 env            = "dev"
 region         = "ap-southeast-2"
 account_id     = "590183937261"
@@ -38,8 +38,8 @@ total_account_cost_cronjob  = "cron(0 0 1,15 * ? *)"     // flexible can be set 
 prometheus_layer            = "lambda_layers/python.zip" // s3 key for lambda layer
 memory_size                 = 128
 timeout                     = 300
-project                     = "xc3team12pd"
-create_cloudtrail_kms       = true
+project                     = "xc3team12pradhumna"
+create_cloudtrail_kms       = false
 create_cloudtrail           = true
 create_cloudtrail_s3_bucket = true
 security_group_ingress = {

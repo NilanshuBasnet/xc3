@@ -13,8 +13,8 @@
 # limitations under the License.
 
 
-project       = "xc3team12PD"
+project       = "xc3team12pradhumna"
 creator_email = "104481900@student.swin.edu.au"
 owner_email   = "104481900@student.swin.edu.au"
-namespace     = "xc3team12PD"
+namespace     = "xc3team12pradhumna"
 region        = "ap-southeast-2"

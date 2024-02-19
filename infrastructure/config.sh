@@ -17,10 +17,10 @@
 # Variables values that will be used in init script to create resources for XC3 infrastructure
 export aws_region="ap-southeast-2"
 export dynamo_table_name="terraform-lock"
-export bucket_name="terraform-state-xc3team12"
-export project="xc3team12pd"
+export bucket_name="terraform-state-team12pradhumna"
+export project="xc3team12pradhumna"
 export domain="104481900@student.swin.edu.au"
 export owner_email="104481900@student.swin.edu.au"
 export creator_email="104481900@student.swin.edu.au"
-export namespace="xc3team12pd"
+export namespace="xc3team12pradhumna"
 export env="dev"
