@@ -45,72 +45,109 @@ def lambda_handler(event, context):
     Raises:
         Lambda Invoke Error: Raise error if message doesn't publish in SNS topic
     """
-    account_id = context.invoked_function_arn.split(":")[4]
-    user_detail_data = []
-    iam_user_detail = []
-    # Getting IAM User Detail from S3 bucket
-    bucket = event["Records"][0]["s3"]["bucket"]["name"]
-    key = unquote_plus(event["Records"][0]["s3"]["object"]["key"])
-    # parsing resource.json file
-    if "resources" in key:
-        try:
-            response = s3.get_object(Bucket=bucket, Key=key)
-            resource_file = response["Body"].read()
-            with gzip.GzipFile(fileobj=io.BytesIO(resource_file), mode="rb") as data:
-                user_detail_data = json.load(data)
-        except Exception as e:
-            logging.error(
-                """
-                Error getting object {} from bucket {}.
-                Make sure bucket and function are in the same region.
-                """.format(
-                    key, bucket
-                ),
-                str(e),
-            )
-            return {"statusCode": 500, "body": json.dumps({"Error": str(e)})}
-    logging.info(user_detail_data)
-    if len(user_detail_data) == 0:
-        return {"statusCode": 200, "body": json.dumps("IAM Users don't exist")}
-    # Initialize the Prometheus registry and gauge
-    else:
-        try:
-            registry = CollectorRegistry()
-            g_user = Gauge(
-                "IAM_Users",
-                "IAM Users",
-                labelnames=["user_name", "user_arn", "user_id", "account_id"],
-                registry=registry,
-            )
-            for iterator in range(len(user_detail_data)):
-                user_name = user_detail_data[iterator]["UserName"]
-                user_arn = user_detail_data[iterator]["Arn"]
-                user_id = user_detail_data[iterator]["UserId"]
-                user_info = {
-                    "UserName": user_name,
-                    "UserArn": user_arn,
-                    "UserId": user_id,
-                }
-                # Add the IAM User detail to the gauge
-                g_user.labels(user_name, user_arn, user_id, account_id).set(0)
-                iam_user_detail.append(user_info)
-            # Push the gauge data to Prometheus
-            push_to_gateway(
-                os.environ["prometheus_ip"], job="IAM_User_Details", registry=registry
-            )
-        except Exception as e:
-            logging.error("Error initializing Prometheus Registry and Gauge: " + str(e))
-            return {"statusCode": 500, "body": json.dumps({"Error": str(e)})}
-        # message for SNS Topic
-        payload_data = iam_user_detail
-        try:
-            sns.publish(
-                TopicArn=topic_arn,
-                Message=json.dumps({"default": json.dumps(payload_data)}),
-                MessageStructure="json",
-            )
-        except Exception as e:
-            logging.error("Error in publish SNS message: " + str(e))
-            return {"statusCode": 500, "body": json.dumps({"Error": str(e)})}
 
-    return {"statusCode": 200, "body": json.dumps(iam_user_detail)}
+    # Initialize IAM client
+    iam = boto3.client('iam')
+    sts_client = boto3.client('sts')
+    
+    # Call list_users method
+    response = iam.list_users()
+    
+    # Extract user information from the response
+    users = response['Users']
+    
+    # Process or format user information
+    # Process or format user information
+    formatted_users = []
+    counter = 0
+    for user in users:
+        counter = counter + 1
+        formatted_users.append(
+        
+            {'user'+str(counter) :
+                {
+                    'UserName' : user['UserName'],
+                    'userid': user['UserId'],
+                    'arn' : user['Arn'],
+                    'token': sts_client.get_federation_token(
+                        Name= user['UserName'],  # Specify the name for the federated user
+                        DurationSeconds=3600  # Specify the duration for which the credentials are valid
+                    )['FederatedUser']['FederatedUserId']
+                }
+            }
+        )
+    
+    # Return the formatted user information
+    return {
+        'statusCode': 200,
+        'body': {'users': formatted_users }
+    }
+    # account_id = context.invoked_function_arn.split(":")[4]
+    # user_detail_data = []
+    # iam_user_detail = []
+    # # Getting IAM User Detail from S3 bucket
+    # bucket = event["Records"][0]["s3"]["bucket"]["name"]
+    # key = unquote_plus(event["Records"][0]["s3"]["object"]["key"])
+    # # parsing resource.json file
+    # if "resources" in key:
+    #     try:
+    #         response = s3.get_object(Bucket=bucket, Key=key)
+    #         resource_file = response["Body"].read()
+    #         with gzip.GzipFile(fileobj=io.BytesIO(resource_file), mode="rb") as data:
+    #             user_detail_data = json.load(data)
+    #     except Exception as e:
+    #         logging.error(
+    #             """
+    #             Error getting object {} from bucket {}.
+    #             Make sure bucket and function are in the same region.
+    #             """.format(
+    #                 key, bucket
+    #             ),
+    #             str(e),
+    #         )
+    #         return {"statusCode": 500, "body": json.dumps({"Error": str(e)})}
+    # logging.info(user_detail_data)
+    # if len(user_detail_data) == 0:
+    #     return {"statusCode": 200, "body": json.dumps("IAM Users don't exist")}
+    # # Initialize the Prometheus registry and gauge
+    # else:
+    #     try:
+    #         registry = CollectorRegistry()
+    #         g_user = Gauge(
+    #             "IAM_Users",
+    #             "IAM Users",
+    #             labelnames=["user_name", "user_arn", "user_id", "account_id"],
+    #             registry=registry,
+    #         )
+    #         for iterator in range(len(user_detail_data)):
+    #             user_name = user_detail_data[iterator]["UserName"]
+    #             user_arn = user_detail_data[iterator]["Arn"]
+    #             user_id = user_detail_data[iterator]["UserId"]
+    #             user_info = {
+    #                 "UserName": user_name,
+    #                 "UserArn": user_arn,
+    #                 "UserId": user_id,
+    #             }
+    #             # Add the IAM User detail to the gauge
+    #             g_user.labels(user_name, user_arn, user_id, account_id).set(0)
+    #             iam_user_detail.append(user_info)
+    #         # Push the gauge data to Prometheus
+    #         push_to_gateway(
+    #             os.environ["prometheus_ip"], job="IAM_User_Details", registry=registry
+    #         )
+    #     except Exception as e:
+    #         logging.error("Error initializing Prometheus Registry and Gauge: " + str(e))
+    #         return {"statusCode": 500, "body": json.dumps({"Error": str(e)})}
+    #     # message for SNS Topic
+    #     payload_data = iam_user_detail
+    #     try:
+    #         sns.publish(
+    #             TopicArn=topic_arn,
+    #             Message=json.dumps({"default": json.dumps(payload_data)}),
+    #             MessageStructure="json",
+    #         )
+    #     except Exception as e:
+    #         logging.error("Error in publish SNS message: " + str(e))
+    #         return {"statusCode": 500, "body": json.dumps({"Error": str(e)})}
+
+    # return {"statusCode": 200, "body": json.dumps(iam_user_detail)}

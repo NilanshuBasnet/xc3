@@ -42,7 +42,9 @@ resource "aws_iam_role_policy" "this" {
           "ec2:DetachNetworkInterface",
           "ec2:AttachNetworkInterface",
           "ec2:DeleteNetworkInterface",
-          "SNS:Publish"
+          "SNS:Publish",
+          "iam:ListUsers",
+          "cognito-identity:ListIdentityPools"
         ]
         Effect   = "Allow"
         Resource = "*"
@@ -71,7 +73,8 @@ resource "aws_iam_role" "lambda_execution_role" {
     "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess",
     "arn:aws:iam::aws:policy/ResourceGroupsandTagEditorReadOnlyAccess",
     "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole",
-    "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+    "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+    "arn:aws:iam::aws:policy/AmazonCognitoPowerUser"
   ]
 
   tags = merge(local.tags, tomap({ "Name" = "${var.namespace}-IAM-User-Lambda-Role" }))
