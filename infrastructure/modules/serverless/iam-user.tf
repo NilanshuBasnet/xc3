@@ -42,7 +42,8 @@ resource "aws_iam_role_policy" "this" {
           "ec2:DetachNetworkInterface",
           "ec2:AttachNetworkInterface",
           "ec2:DeleteNetworkInterface",
-          "SNS:Publish"
+          "SNS:Publish",
+          "iam:ListUsers"
         ]
         Effect   = "Allow"
         Resource = "*"

@@ -15,12 +15,12 @@
 # limitations under the License.
 
 # Variables values that will be used in init script to create resources for XC3 infrastructure
-export aws_region="eu-west-1"
+export aws_region="ap-southeast-2"
 export dynamo_table_name="terraform-lock"
-export bucket_name="terraform-state-xc3"
-export project="example"
-export domain="example.test.co"
-export owner_email="admin@test.co"
-export creator_email="admin@test.co"
-export namespace="example"
-export env="example"
+export bucket_name="terraform-state-team12bh"
+export project="xc3team12bhavyaxyz"
+export domain="xc3team12.test.co"
+export owner_email="104487966@student.swin.edu.au"
+export creator_email="104487966@student.swin.edu.au"
+export namespace="xc3team12bhavyaxyz"
+export env="dev"
