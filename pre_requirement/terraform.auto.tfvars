@@ -13,8 +13,8 @@
 # limitations under the License.
 
 
-project       = "example"
-creator_email = "example@example.co"
-owner_email   = "example@example.co"
-namespace     = "example"
-region        = "eu-west-1"
+project       = "xc3team12bhavyaxyz"
+creator_email = "104487966@student.swin.edu.au"
+owner_email   = "104487966@student.swin.edu.au"
+namespace     = "xc3team12bhavyaxyz"
+region        = "ap-southeast-2"
