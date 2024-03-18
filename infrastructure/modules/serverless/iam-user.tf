@@ -44,7 +44,12 @@ resource "aws_iam_role_policy" "this" {
           "ec2:DeleteNetworkInterface",
           "SNS:Publish",
           "iam:ListUsers",
-          "cognito-identity:ListIdentityPools"
+          "iam:ListGroups",
+          "iam:ListRoles",
+          "cognito-identity:ListIdentityPools",
+          "tag:GetResources",
+          "cloudtrail:LookupEvents",
+          "lambda:ListTags"
         ]
         Effect   = "Allow"
         Resource = "*"

@@ -34,6 +34,25 @@ except Exception as e:
 runtime_region = os.environ["REGION"]
 topic_arn = os.environ["sns_topic"]
 
+def get_resources_for_account_id(account_id):
+    # Initialize the Resource Groups Tagging API client
+    client = boto3.client('resourcegroupstaggingapi')
+    
+    # Retrieve resources with the specified account ID
+    paginator = client.get_paginator('get_resources')
+    resources = []
+    
+    try:
+        # Paginate through the list of resources
+        for page in paginator.paginate(ResourceTypeFilters=['ec2','lambda','s3']):
+            for resource in page.get('ResourceTagMappingList', []):
+                if resource.get('ResourceARN', '').startswith(f'arn:aws:'):
+                    if account_id in resource.get('ResourceARN'):
+                        resources.append(resource.get('ResourceARN'))
+    except Exception as e:
+        print(f"Error retrieving resources: {str(e)}")
+    
+    return paginator.paginate()
 
 def lambda_handler(event, context):
     """
@@ -51,36 +70,54 @@ def lambda_handler(event, context):
     sts_client = boto3.client('sts')
     
     # Call list_users method
-    response = iam.list_users()
+    
+    # response = iam.list_groups()
     
     # Extract user information from the response
-    users = response['Users']
+    # users = response['Users']
+    response = iam.list_roles()
+    account_ids = set()
+    # Process the response
+    for role in response.get('Roles', []):
+        assume_role_policy_document = role.get('AssumeRolePolicyDocument', {})
+        principal = assume_role_policy_document.get('Statement', [{}])[0].get('Principal', {})
+        federated_value = principal.get('Federated')
+        if federated_value:
+            # Extract the account ID from the federated ARN
+            account_id = federated_value.split(':')[4]
+            account_ids.add(account_id)
     
+    # Convert the set of account IDs to a list
+    accounts = list(account_ids)
     # Process or format user information
     # Process or format user information
-    formatted_users = []
-    counter = 0
-    for user in users:
-        counter = counter + 1
-        formatted_users.append(
+    # formatted_users = []
+    # counter = 0
+    # for user in users:
+    #     counter = counter + 1
+    #     formatted_users.append(
         
-            {'user'+str(counter) :
-                {
-                    'UserName' : user['UserName'],
-                    'userid': user['UserId'],
-                    'arn' : user['Arn'],
-                    'token': sts_client.get_federation_token(
-                        Name= user['UserName'],  # Specify the name for the federated user
-                        DurationSeconds=3600  # Specify the duration for which the credentials are valid
-                    )['FederatedUser']['FederatedUserId']
-                }
-            }
-        )
-    
+    #         {'user'+str(counter) :
+    #             {
+    #                 'UserName' : user['UserName'],
+    #                 'userid': user['UserId'],
+    #                 'arn' : user['Arn'],
+    #                 'token': sts_client.get_federation_token(
+    #                     Name= user['UserName'],  # Specify the name for the federated user
+    #                     DurationSeconds=3600  # Specify the duration for which the credentials are valid
+    #                 )['FederatedUser']['FederatedUserId']
+    #             }
+    #         }
+    #     )
     # Return the formatted user information
+    all_resources = []
+    for account_id in account_ids:
+        resources = get_resources_for_account_id(account_id)
+        all_resources.extend(resources)
+    
     return {
         'statusCode': 200,
-        'body': {'users': formatted_users }
+        'body': {'all_resources': all_resources }
     }
     # account_id = context.invoked_function_arn.split(":")[4]
     # user_detail_data = []
