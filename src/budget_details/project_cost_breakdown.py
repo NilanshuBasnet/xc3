@@ -176,7 +176,8 @@ def lambda_handler(event, context):
         json_data = json.dumps(data_list)
         # upload JSON file to S3 bucket
         bucket_name = os.environ["bucket_name"]
-        key_name = f'{os.environ["project_cost_breakdown_prefix"]}/{project_name}.json'
+        key_name = f'{os.environ["project_cost_breakdown_prefix"]}/{project_name}.json'\
+        
         try:
             s3.put_object(Bucket=bucket_name, Key=key_name, Body=json_data)
         except botocore.exceptions.ClientError as e:
@@ -192,4 +193,5 @@ def lambda_handler(event, context):
         logging.error("Error initializing Prometheus Registry and Gauge: " + str(e))
         return {"statusCode": 500, "body": json.dumps({"Error": str(e)})}
     # Return the response
+    
     return {"statusCode": 200, "body": json.dumps(parent_list)}

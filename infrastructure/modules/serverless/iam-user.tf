@@ -44,12 +44,11 @@ resource "aws_iam_role_policy" "this" {
           "ec2:DeleteNetworkInterface",
           "SNS:Publish",
           "iam:ListUsers",
-          "iam:ListGroups",
           "iam:ListRoles",
-          "cognito-identity:ListIdentityPools",
           "tag:GetResources",
-          "cloudtrail:LookupEvents",
-          "lambda:ListTags"
+          "lambda:ListTags",
+          "s3:PutObject",
+          "s3:GetObject"
         ]
         Effect   = "Allow"
         Resource = "*"
@@ -98,6 +97,7 @@ resource "aws_lambda_function" "resources_cost_iam_user" {
     variables = {
       prometheus_ip = "${var.prometheus_ip}:9091"
       region_names_path = "/${var.namespace}/region_names"
+      bucket_name = var.s3_xc3_bucket.bucket
     }
   }
   memory_size = var.memory_size
@@ -142,7 +142,7 @@ resource "aws_lambda_function" "list_iam_user" {
       prometheus_ip = "${var.prometheus_ip}:9091"
       REGION        = var.region
       sns_topic     = var.sns_topic_arn
-
+      bucket_name   = var.s3_xc3_bucket.bucket
     }
   }
   memory_size = var.memory_size
@@ -155,34 +155,39 @@ resource "aws_lambda_function" "list_iam_user" {
   tags = merge(local.tags, tomap({ "Name" = "${var.namespace}-list_iam_user" }))
 }
 
+resource "aws_s3_bucket_notification" "list_iam_user_trigger" {
+  bucket = var.s3_xc3_bucket.id
+  lambda_function {
+    lambda_function_arn = aws_lambda_function.resources_cost_iam_user.arn
+    filter_prefix       = "fed-resources/"
+    events              = ["s3:ObjectCreated:Put"]
+    filter_suffix       = "resources.json"
+  }
+}
+
 resource "aws_lambda_permission" "allow_bucket_for_trigger" {
   statement_id  = "AllowExecutionFromS3Bucket"
   action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.list_iam_user.arn
+  function_name = aws_lambda_function.resources_cost_iam_user.arn
   principal     = "s3.amazonaws.com"
   source_arn    = var.s3_xc3_bucket.arn
 }
 
-resource "aws_s3_bucket_notification" "list_iam_user_trigger" {
-  bucket = var.s3_xc3_bucket.id
-  lambda_function {
-    lambda_function_arn = aws_lambda_function.list_iam_user.arn
-    filter_prefix       = "iam-user/"
-    events              = ["s3:ObjectCreated:Put"]
-    filter_suffix       = "resources.json.gz"
-  }
+resource "aws_s3_object" "example_folder" {
+  bucket = var.s3_xc3_bucket.bucket
+  key    = "fed-resources/" 
 }
 
-resource "aws_sns_topic_subscription" "invoke_with_sns" {
-  topic_arn = var.sns_topic_arn
-  protocol  = "lambda"
-  endpoint  = aws_lambda_function.resources_cost_iam_user.arn
-}
+# resource "aws_sns_topic_subscription" "invoke_with_sns" {
+#   topic_arn = var.sns_topic_arn
+#   protocol  = "lambda"
+#   endpoint  = aws_lambda_function.resources_cost_iam_user.arn
+# }
 
-resource "aws_lambda_permission" "allow_sns_invoke" {
-  statement_id  = "AllowExecutionFromSNS"
-  action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.resources_cost_iam_user.arn
-  principal     = "sns.amazonaws.com"
-  source_arn    = var.sns_topic_arn
-}
+# resource "aws_lambda_permission" "allow_sns_invoke" {
+#   statement_id  = "AllowExecutionFromSNS"
+#   action        = "lambda:InvokeFunction"
+#   function_name = aws_lambda_function.resources_cost_iam_user.arn
+#   principal     = "sns.amazonaws.com"
+#   source_arn    = var.sns_topic_arn
+# }

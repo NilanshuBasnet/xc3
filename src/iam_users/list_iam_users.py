@@ -16,13 +16,16 @@ import io
 import gzip
 import json
 import boto3
+import botocore
 import os
 import logging
 from prometheus_client import CollectorRegistry, Gauge, push_to_gateway
 from urllib.parse import unquote_plus
+from datetime import datetime
 
 try:
     s3 = boto3.client("s3")
+    bucket_name = os.environ["bucket_name"]
 except Exception as e:
     logging.error("Error creating boto3 client: " + str(e))
 try:
@@ -31,8 +34,15 @@ except Exception as e:
     logging.error("Error creating boto3 client: " + str(e))
 
 # Initializing environment variables
-runtime_region = os.environ["REGION"]
-topic_arn = os.environ["sns_topic"]
+runtime_region = 'ap-southeast-2' #os.environ["REGION"]
+# topic_arn = os.environ["sns_topic"]
+
+def verify_tags(tags):
+    required_tags = ['Owner','Creator', 'Project']
+    if all(tag in tags for tag in required_tags):
+        return True
+    else:
+        return False
 
 def get_resources_for_account_id(account_id):
     # Initialize the Resource Groups Tagging API client
@@ -44,15 +54,26 @@ def get_resources_for_account_id(account_id):
     
     try:
         # Paginate through the list of resources
-        for page in paginator.paginate(ResourceTypeFilters=['ec2','lambda','s3']):
+        for page in paginator.paginate(ResourceTypeFilters=['s3', 'lambda', 'ec2:instance']):
             for resource in page.get('ResourceTagMappingList', []):
-                if resource.get('ResourceARN', '').startswith(f'arn:aws:'):
-                    if account_id in resource.get('ResourceARN'):
-                        resources.append(resource.get('ResourceARN'))
+                resource_arn = resource['ResourceARN']
+                
+                tags = {tag['Key']: tag['Value'] for tag in resource.get('Tags', [])}
+                
+                resources.append({'ResourceARN': resource_arn, 'Tags': tags, 'Compliance': verify_tags(tags)})
+                # resources.append({'ResourceARN': resource_arn, 'Tags': tags})
+                # Check resource type and add to appropriate list
+                # if verifyTags(tags):
+                    # if resource_arn.startswith('arn:aws:s3:'):
+                    #     resources.append({'ResourceARN': resource_arn, 'tags': tags})
+                    # elif resource_arn.startswith('arn:aws:lambda:'):
+                    #     resources.append({'ResourceARN': resource_arn, 'tags': tags})
+                    # elif resource_arn.startswith('arn:aws:ec2:'):
+                    #     resources.append({'ResourceARN': resource_arn, 'tags': tags})
     except Exception as e:
         print(f"Error retrieving resources: {str(e)}")
     
-    return paginator.paginate()
+    return resources
 
 def lambda_handler(event, context):
     """
@@ -110,20 +131,40 @@ def lambda_handler(event, context):
     #         }
     #     )
     # Return the formatted user information
-    all_resources = []
+    all_resources = {}
     for account_id in account_ids:
         resources = get_resources_for_account_id(account_id)
-        all_resources.extend(resources)
+        all_resources.update({account_id:resources})
+        
+    current_date = datetime.now()
+    year = str(current_date.year)
+    month = current_date.strftime('%m')
+    day = current_date.strftime('%d')
+
+    # Set the destination key
+    # bucket = event["Records"][0]["s3"]["bucket"]["name"]
+    destination_key = f"fed-resources/{year}/{month}/{day}/resources.json"
+    try:
+        s3.put_object(Bucket=bucket_name, Key=destination_key, Body=json.dumps({'body':all_resources}))
+    except botocore.exceptions.ClientError as e:
+        if e.response["Error"]["Code"] == "NoSuchBucket":
+            raise ValueError(f"Bucket not found: {os.environ['bucket_name']}")
+        elif e.response["Error"]["Code"] == "AccessDenied":
+            raise ValueError(
+                f"Access denied to S3 bucket: {os.environ['bucket_name']}"
+            )
+        else:
+            raise ValueError(f"Failed to upload data to S3 bucket: {str(e)}")
     
     return {
         'statusCode': 200,
-        'body': {'all_resources': all_resources }
+        'body': all_resources
     }
     # account_id = context.invoked_function_arn.split(":")[4]
     # user_detail_data = []
     # iam_user_detail = []
     # # Getting IAM User Detail from S3 bucket
-    # bucket = event["Records"][0]["s3"]["bucket"]["name"]
+    bucket = event["Records"][0]["s3"]["bucket"]["name"]
     # key = unquote_plus(event["Records"][0]["s3"]["object"]["key"])
     # # parsing resource.json file
     # if "resources" in key:

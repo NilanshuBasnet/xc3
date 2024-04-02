@@ -64,7 +64,8 @@ resource "aws_iam_role_policy" "total_account_cost" {
           "ec2:DescribeNetworkInterfaces",
           "ec2:DetachNetworkInterface",
           "ec2:AttachNetworkInterface",
-          "ec2:DeleteNetworkInterface"
+          "ec2:DeleteNetworkInterface",
+          "s3:GetObject"
         ]
         "Resource" : "*"
       },
