@@ -48,7 +48,8 @@ resource "aws_iam_role_policy" "this" {
           "tag:GetResources",
           "lambda:ListTags",
           "s3:PutObject",
-          "s3:GetObject"
+          "s3:GetObject",
+          "ce:GetCostAndUsageWithResources"
         ]
         Effect   = "Allow"
         Resource = "*"

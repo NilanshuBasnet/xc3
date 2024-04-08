@@ -33,7 +33,7 @@ except Exception as e:
     logging.error("Error creating boto3 client for ssm:" + str(e))
 
 
-# def cost_of_instance(event, client, resource_id):
+def cost_of_instance(event, client, resource_id):
     """
     Return cost of resource from last 14 days
 
@@ -45,21 +45,23 @@ except Exception as e:
     Raises:
         KeyError: Error if Cost Explorer API call doesn't execute.
     """
-    # cost_by_days = 14
-    # end_date = str(date.today())
-    # start_date = str(date.today() - timedelta(days=cost_by_days))
-    # ce_response = client.get_cost_and_usage_with_resources(
-    #     TimePeriod={"Start": start_date, "End": end_date},
-    #     Granularity="DAILY",
-    #     Filter={
-    #         "Dimensions": {
-    #             "Key": "RESOURCE_ID",
-    #             "Values": [resource_id],
-    #         }
-    #     },
-    #     Metrics=["UnblendedCost"],
-    # )
-    # return ce_response
+    cost_by_days = 14
+    end_date = str(date.today())
+    start_date = str(date.today() - timedelta(days=cost_by_days))
+    ce_response = client.get_cost_and_usage_with_resources(
+        TimePeriod={"Start": start_date, "End": end_date},
+        Granularity="DAILY",
+        Filter={
+            "Dimensions": {
+                "Key": "RESOURCE_ID",
+                "Values": [resource_id],
+            }
+        },
+        Metrics=["UnblendedCost"],
+    )
+    total_amount = sum(float(item["Total"]["UnblendedCost"]["Amount"]) for item in ce_response["ResultsByTime"])
+    return total_amount
+    
     
 # def get_region_names():
 #     """
@@ -272,17 +274,59 @@ def lambda_handler(event, context):
     # # Calling method to get cost of resources
     # cost_of_resources(event, case_list, account_id)
     # bucket = event["Records"][0]["s3"]["bucket"]["name"]
-    current_date = datetime.now()
-    year = str(current_date.year)
-    month = current_date.strftime('%m')
-    day = current_date.strftime('%d')
-    bucket_name = os.environ['bucket_name']
-    
-    # Set the destination key
-    destination_key = f"fed-resources/{year}/{month}/{day}/duplicated.json"
     try:
+        current_date = datetime.now()
+        year = str(current_date.year)
+        month = current_date.strftime('%m')
+        day = current_date.strftime('%d')
+        bucket_name = os.environ['bucket_name']
+        
+        # Set the destination key
+        destination_key = f"fed-resources/{year}/{month}/{day}/duplicated.json"
+    
         data = s3.get_object(Bucket=event["Records"][0]["s3"]["bucket"]["name"], Key=event["Records"][0]["s3"]["object"]["key"])
-        s3.put_object(Bucket=bucket_name, Key=destination_key, Body=json.dumps(data['Body']))
+        file_content = json.loads(data['Body'].read().decode('utf-8'))
+        ec2_instances = []
+        
+        registry = CollectorRegistry()
+#         # Creating gauge metrics for resource's cost for specific IAM User
+        gauge = Gauge(
+            "FED_USER_Resource_Cost_List",
+            "FED USER Resource List And Cost",
+            labelnames=[
+                "resource_id",
+                "resource",
+                "cost",
+                "account_id",
+                'region'
+            ],
+            registry=registry,
+        )
+        
+        for account_id, resources in file_content['body'].items():
+            account = account_id
+            for resource in resources:
+                if resource['Compliance']:
+                    resource_id = resource['ResourceARN']
+                    resource_type = resource_id.split(':')[2]
+                    if resource['ResourceARN'].startswith('arn:aws:s3'):
+                        region = ''
+                    else:
+                        region = resource_id.split(':')[3]
+                    cost = cost_of_instance(event, client, resource_id)
+                    ec2_instances.append({'resource_id': resource_id, 'cost': cost, 'region': region, 'resource': resource_type, 'account_id': account})
+                    gauge.labels(
+                        resource_id, resource, cost, account_id, region
+                    ).set(cost)
+                    push_to_gateway(
+                    os.environ["prometheus_ip"],
+                        job="FED_USER_Resource_Cost_List",
+                        registry=registry,
+                    )
+                    
+                # elif resource['ResourceARN'].startswith('arn:aws:lambda'):
+                    
+        s3.put_object(Bucket=bucket_name, Key=destination_key, Body=json.dumps({'ec2':ec2_instances}))
     except Exception as f:
         s3.put_object(Bucket=bucket_name, Key=destination_key, Body=json.dumps({'data': str(f)}))
     except botocore.exceptions.ClientError as e:
