@@ -121,7 +121,7 @@ resource "terraform_data" "list_fed_user_zip" {
 
 
 resource "terraform_data" "fed_user_resource_zip" {
-  triggers_replace = [aws_lambda_function.fed_user_resource_zip.arn]
+  triggers_replace = [aws_lambda_function.fed_user_resource.arn]
   provisioner "local-exec" {
     command = "rm -r ${data.archive_file.fed_user_resource_zip.output_path}"
   }
