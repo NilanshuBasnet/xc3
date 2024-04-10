@@ -1,0 +1,24 @@
+module "serverless" {
+  source                      = "./modules/serverless"
+  namespace                   = var.namespace
+  owner_email                 = var.owner_email
+  creator_email               = var.creator_email
+  project                     = var.project
+  region                      = var.region
+  security_group_id           = ""
+  s3_xc3_bucket               = ""
+  sns_topic_arn               = ""
+  prometheus_ip               = ""
+  prometheus_layer            = ""
+  timeout                     = var.timeout
+  memory_size                 = var.memory_size
+  total_account_cost_lambda   = var.total_account_cost_lambda
+  account_id                  = var.account_id
+  total_account_cost_cronjob  = var.total_account_cost_cronjob
+  cron_jobs_schedule          = var.cron_jobs_schedule
+  slack_channel_url           = var.slack_channel_url
+  create_cloudtrail_kms       = var.create_cloudtrail_kms
+  create_cloudtrail           = var.create_cloudtrail
+  create_cloudtrail_s3_bucket = var.create_cloudtrail_s3_bucket
+  env                         = var.env
+}
