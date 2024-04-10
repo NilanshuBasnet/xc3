@@ -120,6 +120,14 @@ resource "terraform_data" "list_fed_user_zip" {
 }
 
 
+resource "terraform_data" "fed_user_resource_zip" {
+  triggers_replace = [aws_lambda_function.fed_user_resource_zip.arn]
+  provisioner "local-exec" {
+    command = "rm -r ${data.archive_file.fed_user_resource_zip.output_path}"
+  }
+}
+
+
 resource "aws_lambda_function" "list_fed_user" {
   #ts:skip=AC_AWS_0484 We are aware of the risk and choose to skip this rule
   #ts:skip=AC_AWS_0485 We are aware of the risk and choose to skip this rule
