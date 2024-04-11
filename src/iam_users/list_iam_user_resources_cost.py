@@ -316,7 +316,7 @@ def lambda_handler(event, context):
                     cost = cost_of_instance(event, client, resource_id)
                     ec2_instances.append({'resource_id': resource_id, 'cost': cost, 'region': region, 'resource': resource_type, 'account_id': account})
                     gauge.labels(
-                        resource_id, resource, cost, account_id, region
+                        resource_id, resource_type, cost, account_id, region
                     ).set(cost)
                     push_to_gateway(
                     os.environ["prometheus_ip"],
