@@ -298,7 +298,8 @@ def lambda_handler(event, context):
                 "resource",
                 "cost",
                 "account_id",
-                'region'
+                'region',
+                'resource_name'
             ],
             registry=registry,
         )
@@ -309,14 +310,17 @@ def lambda_handler(event, context):
                 if resource['Compliance']:
                     resource_id = resource['ResourceARN']
                     resource_type = resource_id.split(':')[2]
+                    resource_name = resource_id.split(':')[-1]
+                    if 'arn:aws:ec2' in resource['ResourceARN']:
+                        resource_name = resource['Tags']['Name']
                     if resource['ResourceARN'].startswith('arn:aws:s3'):
                         region = ''
                     else:
                         region = resource_id.split(':')[3]
                     cost = cost_of_instance(event, client, resource_id)
-                    ec2_instances.append({'resource_id': resource_id, 'cost': cost, 'region': region, 'resource': resource_type, 'account_id': account})
+                    ec2_instances.append({'resource_id': resource_id, 'cost': cost, 'region': region, 'resource': resource_type, 'resource_name': resource_name, 'account_id': account})
                     gauge.labels(
-                        resource_id, resource_type, cost, account_id, region
+                        resource_id, resource_type, cost, account_id, region, resource_name
                     ).set(cost)
                     push_to_gateway(
                     os.environ["prometheus_ip"],
