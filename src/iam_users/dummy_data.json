@@ -1,0 +1,109 @@
+[
+  {
+    "eventTime": "2024-02-01T12:00:00Z",
+    "eventName": "AssumeRole",
+    "userIdentity": {
+      "type": "AssumedRole",
+      "principalId": "FEDERATED_USER_ID:Bhavya",
+      "arn": "arn:aws:sts::123456789012:assumed-role/RoleForFederatedUser/Bhavya",
+      "accountId": "123456789012",
+      "accessKeyId": "ASIAIOSFODNN7EXAMPLE",
+      "sessionContext": {
+        "sessionIssuer": {
+          "type": "Role",
+          "principalId": "AIDAJQABLZS4A3QDU576Q",
+          "arn": "arn:aws:iam::123456789012:role/RoleForFederatedUser",
+          "accountId": "123456789012",
+          "userName": "Bhavya"
+        }
+      },
+      "Tagged": true,
+      "serviceCosts": {
+        "EC2": 100,
+        "Lambda": 50,
+        "TotalCost": 150
+      }
+    }
+  },
+  {
+    "eventTime": "2024-02-01T12:30:00Z",
+    "eventName": "AssumeRole",
+    "userIdentity": {
+      "type": "AssumedRole",
+      "principalId": "FEDERATED_USER_ID:Pradhumna",
+      "arn": "arn:aws:sts::123456789012:assumed-role/RoleForFederatedUser/Pradhumna",
+      "accountId": "123456789012",
+      "accessKeyId": "ASIAIOSFODNN7EXAMPLE",
+      "sessionContext": {
+        "sessionIssuer": {
+          "type": "Role",
+          "principalId": "AIDAJQABLZS4A3QDU576Q",
+          "arn": "arn:aws:iam::123456789012:role/RoleForFederatedUser",
+          "accountId": "123456789012",
+          "userName": "Pradhumna"
+        }
+      },
+      "Tagged": true,
+      "serviceCosts": {
+        "EC2": 150,
+        "S3":30,
+        "Lambda": 60,
+        "TotalCost": 240
+      }
+    }
+  },
+  {
+    "eventTime": "2024-02-01T13:00:00Z",
+    "eventName": "AssumeRole",
+    "userIdentity": {
+      "type": "AssumedRole",
+      "principalId": "FEDERATED_USER_ID:Susanta",
+      "arn": "arn:aws:sts::123456789012:assumed-role/RoleForFederatedUser/Susanta",
+      "accountId": "123456789012",
+      "accessKeyId": "ASIAIOSFODNN7EXAMPLE",
+      "sessionContext": {
+        "sessionIssuer": {
+          "type": "Role",
+          "principalId": "AIDAJQABLZS4A3QDU576Q",
+          "arn": "arn:aws:iam::123456789012:role/RoleForFederatedUser",
+          "accountId": "123456789012",
+          "userName": "Susanta"
+        }
+      },
+      "Tagged": true,
+      "serviceCosts": {
+        "EC2": 120,
+        "S3":70,
+        "Lambda": 40,
+        "TotalCost": 230
+      }
+    }
+  },
+  {
+    "eventTime": "2024-02-01T13:30:00Z",
+    "eventName": "AssumeRole",
+    "userIdentity": {
+      "type": "AssumedRole",
+      "principalId": "FEDERATED_USER_ID:Nilanshu",
+      "arn": "arn:aws:sts::123456789012:assumed-role/RoleForFederatedUser/Nilanshu",
+      "accountId": "123456789012",
+      "accessKeyId": "ASIAIOSFODNN7EXAMPLE",
+      "sessionContext": {
+        "sessionIssuer": {
+          "type": "Role",
+          "principalId": "AIDAJQABLZS4A3QDU576Q",
+          "arn": "arn:aws:iam::123456789012:role/RoleForFederatedUser",
+          "accountId": "123456789012",
+          "userName": "Nilanshu"
+        }
+      },
+      "Tagged": true,
+      "serviceCosts": {
+        "EC2": 200,
+        "S3":10,
+        "Lambda": 80,
+        "TotalCost": 290
+      }
+    }
+  }
+]
