@@ -18,11 +18,13 @@ import logging
 import os
 from prometheus_client import CollectorRegistry, Gauge, push_to_gateway
 from datetime import date, datetime, timedelta
+import botocore
 
 case_list = []
 regionName = os.environ["AWS_REGION"]
 try:
     client = boto3.client("ce")
+    s3 = boto3.client("s3")
 except Exception as e:
     logging.error("Error creating boto3 client: " + str(e))
 try:
@@ -57,147 +59,8 @@ def cost_of_instance(event, client, resource_id):
         },
         Metrics=["UnblendedCost"],
     )
-    return ce_response
-    
-def get_region_names():
-    """
-    Retrieves the region names dictionary from AWS Systems Manager Parameter Store.
-
-    Returns:
-    - dict: The region names dictionary.
-    """
-    region_path = os.environ["region_names_path"]
-    
-    try:
-        response = ssm_client.get_parameter(Name=region_path)
-        region_names = json.loads(response["Parameter"]["Value"])
-        return region_names
-    except Exception as e:
-        logging.error("Error retrieving region names from Parameter Store: " + str(e))
-        raise
-
-# Get the region names dictionary
-region_names = get_region_names()
-
-
-def cost_of_resources(event, resource_list, account_id):
-    """
-    Push metrics of cumulative cost under ownership of specific IAM User.
-    Push metrics of total services cost for specific IAM User.
-    Args:
-        Resource List: IAM User's resource list.
-        Account ID: AWS Account ID
-    Returns:
-        It pushes following metrics in grafana:
-           - Total Services cost for specific IAM User in each AWS Region
-           - List resources with cumulative cost under ownership of specific IAM User
-    Raises:
-        KeyError: Error in initializing Prometheus Registry and Gauge.
-    """
-    # Initialize the Prometheus registry and gauge
-    try:
-        registry = CollectorRegistry()
-        # Creating gauge metrics for resource's cost for specific IAM User
-        gauge = Gauge(
-            "IAM_USER_Resource_Cost_List",
-            "IAM User Resource List And Cost",
-            labelnames=[
-                "Query_Time",
-                "user",
-                "region",
-                "resource",
-                "cumulative_cost",
-                "account_id",
-            ],
-            registry=registry,
-        )
-        # Creating gauge metrics for total services cost of IAM User
-        g_user_cost = Gauge(
-            "IAM_USER_Total_Services_Cost_List",
-            "IAM User Total Services Cost List",
-            labelnames=["Query_Time", "user", "region", "resources_cost", "account_id"],
-            registry=registry,
-        )
-
-        for item in range(len(resource_list)):
-            # Getting IAM User detail
-            user = resource_list[item]["User"]
-            region = resource_list[item]["Region"]
-            resources = resource_list[item]["ResourceList"]
-            # Initializing total_services cost
-            user_region_wise_cost = 0.0
-
-            for res in resources:
-                cumulative_cost = 0.0
-                if len(res) == 0:
-                    continue
-                elif "ec2" in res:
-                    # getting instance ID
-                    instance = res.split("/")[1]
-                    # Calling Cost method
-                    response = cost_of_instance(event, client, instance)
-                    # Parsing result from cost method
-                    for iterator in range(len(response["ResultsByTime"])):
-                        cumulative_cost = cumulative_cost + float(
-                            response["ResultsByTime"][iterator]["Total"][
-                                "UnblendedCost"
-                            ]["Amount"]
-                        )
-                        time_delta = response["ResultsByTime"][iterator]["TimePeriod"][
-                            "End"
-                        ]
-                        metric_time = time_delta.replace("00:00:00", "12:02:02")
-                    user_region_wise_cost = user_region_wise_cost + cumulative_cost
-                    gauge.labels(
-                        (datetime.strptime(metric_time, "%Y-%m-%dT%H:%M:%SZ")).strftime(
-                            "%Y-%m-%d %H:%M:%S"
-                        ),
-                        user,
-                        f"{region} ({region_names.get(region, 'unknown region name')})", 
-                        res,
-                        cumulative_cost,
-                        account_id,
-                    ).set(cumulative_cost)
-                elif "lambda" in res:
-                    lambda_service = res.split(":")[-1]
-                    time_delta = response["ResultsByTime"][iterator]["TimePeriod"][
-                        "End"
-                    ]
-                    logging.info(lambda_service)
-                    metric_time = time_delta.replace("00:00:00", "12:02:02")
-                    gauge.labels(
-                        (datetime.strptime(metric_time, "%Y-%m-%dT%H:%M:%SZ")).strftime(
-                            "%Y-%m-%d %H:%M:%S"
-                        ),
-                        user,
-                        f"{region} ({region_names.get(region, 'unknown region name')})",
-                        res,
-                        "0",
-                        account_id,
-                    ).set(0)
-            g_user_cost.labels(
-                datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                user,
-                f"{region} ({region_names.get(region, 'unknown region name')})",
-                user_region_wise_cost,
-                account_id,
-            ).set(user_region_wise_cost)
-
-        # Push the gauge data to Prometheus
-        push_to_gateway(
-            os.environ["prometheus_ip"],
-            job="IAM_User_Resource_List_Cost_" + regionName,
-            registry=registry,
-        )
-        push_to_gateway(
-            os.environ["prometheus_ip"],
-            job="IAM_User_Total_Services_Cost_List_" + regionName,
-            registry=registry,
-        )
-
-    except Exception as e:
-        raise ValueError(f"Failed to push cost data to Prometheus: {str(e)}")
-
+    total_amount = sum(float(item["Total"]["UnblendedCost"]["Amount"]) for item in ce_response["ResultsByTime"])
+    return total_amount
 
 def lambda_handler(event, context):
     """
@@ -209,65 +72,75 @@ def lambda_handler(event, context):
     Raises:
         KeyError: Raise error if cost explorer api  call not execute.
     """
-    # Getting IAM User Detail from SNS Message Payload
-    user_details = json.loads(event["Records"][0]["Sns"]["Message"])
-    account_id = context.invoked_function_arn.split(":")[4]
-
-    for iterator in range(len(user_details)):
-        user = user_details[iterator]["UserName"]
-        # creating subset list for resources under ownership of specific IAM User
-        subset_list = []
-        try:
-            client = boto3.client("resourcegroupstaggingapi", region_name=regionName)
-        except Exception as e:
-            logging.error("Error in initiating boto3 client: " + str(e))
-            return {"statusCode": 500, "body": json.dumps({"Error": str(e)})}
-        # getting resource detail using Owner tag
-        try:
-            response = client.get_resources(
-                TagFilters=[
-                    {
-                        "Key": "Owner",
-                        "Values": [
-                            user,
-                        ],
-                    },
-                ]
+    try:
+        current_date = datetime.now()
+        year = str(current_date.year)
+        month = current_date.strftime('%m')
+        day = current_date.strftime('%d')
+        bucket_name = os.environ['bucket_name']
+        
+        # Set the destination key
+        destination_key = f"fed-resources/{year}/{month}/{day}/duplicated.json"
+    
+        data = s3.get_object(Bucket=event["Records"][0]["s3"]["bucket"]["name"], Key=event["Records"][0]["s3"]["object"]["key"])
+        file_content = json.loads(data['Body'].read().decode('utf-8'))
+        ec2_instances = []
+        
+        registry = CollectorRegistry()
+#         # Creating gauge metrics for resource's cost for specific IAM User
+        gauge = Gauge(
+            "FED_USER_Resource_Cost_List",
+            "FED USER Resource List And Cost",
+            labelnames=[
+                "resource_id",
+                "resource",
+                "cost",
+                "account_id",
+                'region',
+                'resource_name',
+                'month'
+            ],
+            registry=registry,
+        )
+        
+        for account_id, resources in file_content['body'].items():
+            account = account_id
+            for resource in resources:
+                if resource['Compliance']:
+                    resource_id = resource['ResourceARN']
+                    resource_type = resource_id.split(':')[2]
+                    resource_name = resource_id.split(':')[-1]
+                    if 'arn:aws:ec2' in resource['ResourceARN']:
+                        resource_name = resource['Tags']['Name']
+                    if resource['ResourceARN'].startswith('arn:aws:s3'):
+                        region = ''
+                    else:
+                        region = resource_id.split(':')[3]
+                    cost = cost_of_instance(event, client, resource_id)
+                    current_month_name = datetime.now().strftime("%B")
+                    month = (datetime.now() - timedelta(days=datetime.now().day - 1)).strftime("%B") if datetime.now().day == 1 else current_month_name
+                    ec2_instances.append({'resource_id': resource_id, 'cost': cost, 'region': region, 'resource': resource_type, 'resource_name': resource_name, 'account_id': account})
+                    gauge.labels(
+                        resource_id, resource_type, cost, account_id, region, resource_name, month
+                    ).set(cost)
+                    push_to_gateway(
+                    os.environ["prometheus_ip"],
+                        job="FED_USER_Resource_Cost_List",
+                        registry=registry,
+                    )
+                    
+                # elif resource['ResourceARN'].startswith('arn:aws:lambda'):
+                    
+        s3.put_object(Bucket=bucket_name, Key=destination_key, Body=json.dumps({'ec2':ec2_instances}))
+    except Exception as f:
+        s3.put_object(Bucket=bucket_name, Key=destination_key, Body=json.dumps({'data': str(f)}))
+    except botocore.exceptions.ClientError as e:
+        if e.response["Error"]["Code"] == "NoSuchBucket":
+            raise ValueError(f"Bucket not found: {os.environ['bucket_name']}")
+        elif e.response["Error"]["Code"] == "AccessDenied":
+            raise ValueError(
+                f"Access denied to S3 bucket: {os.environ['bucket_name']}"
             )
-        except Exception as e:
-            logging.error(
-                "Error getting response from resourcegroupstaggingapi: " + str(e)
-            )
-            return {"statusCode": 500, "body": json.dumps({"Error": str(e)})}
-
-        response_dict = json.dumps(response)
-        parse_string = json.loads(response_dict)
-
-        # parsing resource info
-        dict_len = len(parse_string["ResourceTagMappingList"])
-        if dict_len == 0:
-            result_list = {"User": user, "ResourceList": [""], "Region": regionName}
-            case_list.append(result_list)
         else:
-            for item in parse_string["ResourceTagMappingList"]:
-                subset = item["ResourceARN"].split(":")
-                subset_len = len(subset)
-                if subset_len == 6:
-                    # adding service and resource id
-                    resource = subset[2] + ":" + subset[5]
-                    subset_list.append(resource)
-                else:
-                    # adding service and resource id
-                    resource = subset[2] + ":" + subset[5] + ":" + subset[6]
-                    subset_list.append(resource)
-                # creating resource list for cost and usage api
-            result_list = {
-                "User": user,
-                "ResourceList": subset_list,
-                "Region": regionName,
-            }
-            case_list.append(result_list)
-    # Calling method to get cost of resources
-    cost_of_resources(event, case_list, account_id)
-
-    return {"statusCode": 200, "body": json.dumps(case_list)}
+            raise ValueError(f"Failed to upload data to S3 bucket: {str(e)}")
+    return {"statusCode": 200}
