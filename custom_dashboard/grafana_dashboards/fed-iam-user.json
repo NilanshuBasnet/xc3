@@ -18,9 +18,22 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 9,
+  "id": 3,
   "links": [],
   "panels": [
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 11,
+      "panels": [],
+      "title": "Account Wise Cost",
+      "type": "row"
+    },
     {
       "datasource": {
         "type": "prometheus"
@@ -52,7 +65,7 @@
         "h": 4,
         "w": 5,
         "x": 0,
-        "y": 0
+        "y": 1
       },
       "id": 6,
       "options": {
@@ -71,7 +84,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "10.4.0",
+      "pluginVersion": "10.4.2",
       "targets": [
         {
           "datasource": {
@@ -114,7 +127,7 @@
         "h": 4,
         "w": 3,
         "x": 5,
-        "y": 0
+        "y": 1
       },
       "id": 9,
       "options": {
@@ -133,7 +146,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "10.4.0",
+      "pluginVersion": "10.4.2",
       "targets": [
         {
           "datasource": {
@@ -190,7 +203,7 @@
         "h": 15,
         "w": 10,
         "x": 8,
-        "y": 0
+        "y": 1
       },
       "id": 4,
       "links": [
@@ -221,7 +234,7 @@
         },
         "valueMode": "color"
       },
-      "pluginVersion": "10.4.0",
+      "pluginVersion": "10.4.2",
       "targets": [
         {
           "datasource": {
@@ -267,7 +280,7 @@
         "h": 7,
         "w": 6,
         "x": 18,
-        "y": 0
+        "y": 1
       },
       "id": 5,
       "options": {
@@ -342,7 +355,7 @@
         "h": 11,
         "w": 8,
         "x": 0,
-        "y": 4
+        "y": 5
       },
       "id": 8,
       "options": {
@@ -367,7 +380,7 @@
         },
         "valueMode": "color"
       },
-      "pluginVersion": "10.4.0",
+      "pluginVersion": "10.4.2",
       "targets": [
         {
           "datasource": {
@@ -417,7 +430,7 @@
         "h": 8,
         "w": 6,
         "x": 18,
-        "y": 7
+        "y": 8
       },
       "id": 7,
       "options": {
@@ -442,7 +455,7 @@
         },
         "valueMode": "color"
       },
-      "pluginVersion": "10.4.0",
+      "pluginVersion": "10.4.2",
       "targets": [
         {
           "datasource": {
@@ -463,6 +476,162 @@
       ],
       "title": "Region wise Cost",
       "type": "bargauge"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 16
+      },
+      "id": 12,
+      "panels": [],
+      "title": "Resource Wise Cost",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "currencyUSD"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 17,
+        "x": 1,
+        "y": 17
+      },
+      "id": 10,
+      "options": {
+        "displayMode": "gradient",
+        "maxVizHeight": 300,
+        "minVizHeight": 16,
+        "minVizWidth": 8,
+        "namePlacement": "auto",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showUnfilled": true,
+        "sizing": "auto",
+        "valueMode": "color"
+      },
+      "pluginVersion": "10.4.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "disableTextWrap": false,
+          "editorMode": "builder",
+          "expr": "FED_USER_Resource_Cost_List{resource_name=~\"$resource_name\", account_id=~\"$Account_ID\"}",
+          "fullMetaSearch": false,
+          "includeNullMetadata": true,
+          "instant": false,
+          "legendFormat": "{{resource_name}}",
+          "range": true,
+          "refId": "A",
+          "useBackend": false
+        }
+      ],
+      "title": "Resource Wise Cost",
+      "type": "bargauge"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 3,
+        "x": 18,
+        "y": 17
+      },
+      "id": 13,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "10.4.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus"
+          },
+          "disableTextWrap": false,
+          "editorMode": "code",
+          "expr": "count(count by (resource_name) (FED_USER_Resource_Cost_List))",
+          "fullMetaSearch": false,
+          "includeNullMetadata": true,
+          "instant": false,
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "A",
+          "useBackend": false
+        }
+      ],
+      "title": "Active resources",
+      "type": "stat"
     }
   ],
   "refresh": "",
@@ -478,7 +647,8 @@
           "value": "$__all"
         },
         "datasource": {
-          "type": "prometheus"
+          "type": "prometheus",
+          "uid": "PBFA97CFB590B2093"
         },
         "definition": "label_values(FED_USER_Resource_Cost_List,account_id)",
         "hide": 0,
@@ -506,7 +676,8 @@
           "value": "$__all"
         },
         "datasource": {
-          "type": "prometheus"
+          "type": "prometheus",
+          "uid": "PBFA97CFB590B2093"
         },
         "definition": "label_values(FED_USER_Resource_Cost_List,month)",
         "hide": 0,
@@ -525,6 +696,35 @@
         "skipUrlSync": false,
         "sort": 3,
         "type": "query"
+      },
+      {
+        "allValue": "",
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "PBFA97CFB590B2093"
+        },
+        "definition": "label_values(FED_USER_Resource_Cost_List,resource_name)",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Resource Name",
+        "multi": false,
+        "name": "resource_name",
+        "options": [],
+        "query": {
+          "qryType": 1,
+          "query": "label_values(FED_USER_Resource_Cost_List,resource_name)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
       }
     ]
   },
@@ -536,6 +736,6 @@
   "timezone": "browser",
   "title": "Federated IAM User Cost",
   "uid": "adiesz3lsuq68b",
-  "version": 46,
+  "version": 1,
   "weekStart": ""
 }
