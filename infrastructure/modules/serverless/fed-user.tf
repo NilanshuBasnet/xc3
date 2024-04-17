@@ -183,3 +183,10 @@ resource "aws_lambda_permission" "allow_buckets_for_trigger" {
   source_arn    = var.s3_xc3_bucket.arn
 }
 
+resource "aws_lambda_permission" "allow_eventbridge_invoke" {
+  statement_id  = "AllowExecutionFromEventBridge"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.list_fed_user.function_name
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.federated_cron_job.arn
+}
